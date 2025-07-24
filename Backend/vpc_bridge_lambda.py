@@ -38,14 +38,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": "Missing action or user_id"})
             }
 
-        elif action == "list_files":
-            if not path:
-                return error_response("Missing path")
-            return forward("folder_list_lambda", {
-                    "user_id": user_id,
-                    "path": path
-            })
-        elif action == "list_folders":
+        elif action == "list_contents":
             if not path:
                 return error_response("Missing path")
             return forward("folder_list_lambda", {
@@ -82,11 +75,13 @@ def lambda_handler(event, context):
             token = json.loads(share_result["body"])["token"]
 
             # Step 2: Call file_download_lambda
-            return forward("file_download_lambda", {
+            result = forward("file_download_lambda", {
                 "queryStringParameters": {
                     "token": token
                 }
             })
+            print("📦 file_download_lambda response:", result)  # <== Add this!
+            return result            
 
         else:
             return error_response(f"Unknown action: {action}")

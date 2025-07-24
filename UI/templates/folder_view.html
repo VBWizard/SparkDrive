@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>SparkDrive – {{ path }}</title>
+</head>
+
+<body>
+    <h2>Folder: {{ path }}</h2>
+
+    <h3>Folders</h3>
+    <ul>
+        {% for folder in folders %}
+        <li><a href="/folder?path={{ folder.path }}">{{ folder.name }}</a></li>
+        {% endfor %}
+    </ul>
+
+    <h3>Files</h3>
+    <ul>
+        {% for file in files %}
+        <li><a href="/download/{{ file.file_id }}">{{ file.filename }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>SparkDrive – Icon View</title>
+    <style>
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 10px;
+        }
+
+        .item {
+            width: 120px;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        .item img {
+            width: 48px;
+            height: 48px;
+        }
+
+        a {
+            text-decoration: none;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Folder: {{ path }}</h2>
+    <a href="/folder?path={{ path }}">🔁 Switch to List View</a>
+
+    <h3>Folders</h3>
+    <div class="grid">
+        {% for folder in folders %}
+        <div class="item">
+            <a href="/folder/view/icon?path={{ folder.path }}"><img src="/static/icons/folder.png" alt="Folder"><br>{{ folder.name }}</a>
+            <br>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h3>Files</h3>
+    <div class="grid">
+        {% for file in files %}
+        <div class="item">
+            <a href="/download/{{ file.file_id }}"><img src="/static/icons/file.png" alt="File"><br>{{ file.filename }}</a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+
+</html>

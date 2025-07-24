@@ -2,6 +2,36 @@ import json
 import psycopg2
 import os
 
+def get_direct_subfolders(folders, current_path):
+    current_path = current_path.rstrip("/")
+    prefix = current_path + "/" if current_path != "" else "/"
+
+    seen = set()
+    results = []
+
+    for folder in folders:
+        full_path = folder["path"].rstrip("/")
+
+        if full_path == current_path:
+            continue  # skip self
+
+        if not full_path.startswith(prefix):
+            continue
+
+        suffix = full_path[len(prefix):]
+        parts = suffix.split("/")
+
+        if len(parts) >= 1:
+            name = parts[0]
+            if name not in seen:
+                seen.add(name)
+                results.append({
+                    "name": name,
+                    "path": prefix + name
+                })
+
+    return results
+
 def lambda_handler(event, context):
     # Extract query parameters
     print(f"[DEBUG] folder_list_lambda triggered")
@@ -64,6 +94,8 @@ def lambda_handler(event, context):
             if child_path.count("/") == depth:
                 name = child_path.rsplit("/", 1)[-1]
                 folders.append({"name": name, "path": child_path})
+
+        folders = get_direct_subfolders(folders, folder_path)
 
         # 📄 Get files in the folder
         cur.execute("""

@@ -1,26 +1,33 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>SparkDrive – {{ path }}</title>
-</head>
+{% block title %}SparkDrive – {{ path }}{% endblock %}
 
-<body>
-    <h2>Folder: {{ path }}</h2>
+{% block content %}
+<h2 class="mb-3 d-flex align-items-center">
+    Folder: <code class="ms-1">{{ path }}</code>
+    <div class="ms-auto d-flex gap-2">
+        <a href="/folder/view/icon?path={{ path }}" class="btn btn-sm btn-outline-primary">🖼️ Switch to Icon View</a>
+        <a href="/upload?path={{ path }}" class="btn btn-sm btn-outline-primary">⬆️ Upload File</a>
+        <a href="/newfolder?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
+            class="btn btn-sm btn-outline-primary">New Folder</a>
+    </div>
+</h2>
 
-    <h3>Folders</h3>
-    <ul>
-        {% for folder in folders %}
-        <li><a href="/folder?path={{ folder.path }}">{{ folder.name }}</a></li>
-        {% endfor %}
-    </ul>
+<h4>Folders</h4>
+<ul class="list-group mb-4">
+    {% for folder in folders %}
+    <li class="list-group-item">
+        <a href="/folder?path={{ folder.path }}">📁 {{ folder.name }}</a>
+    </li>
+    {% endfor %}
+</ul>
 
-    <h3>Files</h3>
-    <ul>
-        {% for file in files %}
-        <li><a href="/download/{{ file.file_id }}">{{ file.filename }}</a></li>
-        {% endfor %}
-    </ul>
-</body>
-
-</html>
+<h4>Files</h4>
+<ul class="list-group">
+    {% for file in files %}
+    <li class="list-group-item">
+        <a href="/download/{{ file.file_id }}">📄 {{ file.filename }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

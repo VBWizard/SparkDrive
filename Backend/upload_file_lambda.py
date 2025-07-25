@@ -11,17 +11,28 @@ SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
 
 def lambda_handler(event, context):
     try:
-        body = json.loads(event['body']) if 'body' in event else event
+        # Unwrap body if present
+        if isinstance(event.get("body"), str):
+            try:
+                body = json.loads(event["body"])
+            except json.JSONDecodeError:
+                return {"statusCode": 400, "body": json.dumps({"status": "error", "message": "Invalid JSON in body."})}
+        else:
+            body = event
 
-        folder = body.get('folder', '').lstrip('/')
+        folder = body.get('folder')
+        folder = folder if folder == '/' else folder.lstrip('/')
         filename = body.get('filename')
         content_b64 = body.get('content')
         user_id = body.get("user_id")
-
-        if not folder or not filename or not content_b64:
-            return _response(400, "Missing folder, filename, or content.")
-        if not user_id:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing user_id"})}
+        if not all([folder, filename, content_b64, user_id]):
+            return {
+                "statusCode": 400,
+                "body": json.dumps({
+                    "status": "error",
+                    "message": "Missing folder, filename, content or user_id."
+                })
+            }
 
         try:
             file_bytes = base64.b64decode(content_b64)

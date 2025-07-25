@@ -1,56 +1,40 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>SparkDrive – Icon View</title>
-    <style>
-        .grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            padding: 10px;
-        }
+{% block title %}SparkDrive – Icon View{% endblock %}
 
-        .item {
-            width: 120px;
-            text-align: center;
-            font-family: sans-serif;
-        }
-
-        .item img {
-            width: 48px;
-            height: 48px;
-        }
-
-        a {
-            text-decoration: none;
-            color: #333;
-        }
-    </style>
-</head>
-
-<body>
-    <h2>Folder: {{ path }}</h2>
-    <a href="/folder?path={{ path }}">🔁 Switch to List View</a>
-
-    <h3>Folders</h3>
-    <div class="grid">
-        {% for folder in folders %}
-        <div class="item">
-            <a href="/folder/view/icon?path={{ folder.path }}"><img src="/static/icons/folder.png" alt="Folder"><br>{{ folder.name }}</a>
-            <br>
-        </div>
-        {% endfor %}
+{% block content %}
+<h2 class="mb-3 d-flex align-items-center">
+    Folder: <code class="ms-1">{{ path }}</code>
+    <div class="ms-auto d-flex gap-2">
+        <a href="/folder?path={{ path }}" class="btn btn-sm btn-outline-primary">📋 Switch to List View</a>
+        <a href="/upload?path={{ path }}" class="btn btn-sm btn-outline-primary">⬆️ Upload File</a>
+        <a href="/newfolder?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
+            class="btn btn-sm btn-outline-primary">New Folder</a>
     </div>
+</h2>
 
-    <h3>Files</h3>
-    <div class="grid">
-        {% for file in files %}
-        <div class="item">
-            <a href="/download/{{ file.file_id }}"><img src="/static/icons/file.png" alt="File"><br>{{ file.filename }}</a>
-        </div>
-        {% endfor %}
+<h4>Folders</h4>
+<div class="row row-cols-2 row-cols-md-4 g-4 mb-5">
+    {% for folder in folders %}
+    <div class="col text-center">
+        <a href="/folder/view/icon?path={{ folder.path }}" class="text-decoration-none text-dark">
+            <img src="/static/icons/folder.png" alt="Folder" width="48" height="48"><br>
+            {{ folder.name }}
+        </a>
     </div>
-</body>
+    {% endfor %}
+</div>
 
-</html>
+<h4>Files</h4>
+<div class="row row-cols-2 row-cols-md-4 g-4">
+    {% for file in files %}
+    <div class="col text-center">
+        <a href="/download/{{ file.file_id }}" class="text-decoration-none text-dark">
+            <img src="/static/icons/file.png" alt="File" width="48" height="48"><br>
+            {{ file.filename }}
+        </a>
+    </div>
+    {% endfor %}
+</div>
+<input type="hidden" name="return_to" value="{{ return_to }}">
+{% endblock %}

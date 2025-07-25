@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}SparkDrive – Create Folder{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Create Folder</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="folder" class="form-label">Parent Folder</label>
+            <input type="text" class="form-control" id="folder" name="folder"
+                value="{{ folder_default | default('/') }}" required disabled>
+        </div>
+        <div class="mb-3">
+            <label for="file" class="form-label">New Folder Name</label>
+            <input class="form-control" type="text" id="new_folder_name" name="new_folder_name" required>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Create</button>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

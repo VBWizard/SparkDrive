@@ -46,7 +46,6 @@ def lambda_handler(event, context):
                     "path": path
             })
         elif action == "create_folder":
-            path = body.get("path")
             if not path:
                 return error_response("Missing path")
             return forward("folder_create_lambda", {
@@ -66,6 +65,15 @@ def lambda_handler(event, context):
                 "body": json.dumps({
                     "user_id": user_id,
                     "file_id": file_id
+                })
+            })
+        elif action == "delete_folder":
+            if not path:
+                return error_response("Missing path")
+            return forward("folder_delete_lambda", {
+                "body": json.dumps({
+                    "user_id": user_id,
+                    "path": path
                 })
             })
 

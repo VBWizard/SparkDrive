@@ -11,6 +11,11 @@ app.secret_key = SECRET_KEY
 
 API_BASE = "https://4gezooenuc.execute-api.us-east-2.amazonaws.com/dev"
 
+def parent_path(path):
+    if path == "/":
+        return "/"
+    return os.path.dirname(path.rstrip('/'))
+
 @app.route("/")
 def home():
     return folder_view()
@@ -140,6 +145,44 @@ def upload():
             flash(f"Exception during upload: {str(e)}", "error")
 
     return render_template("upload.html", folder_default=folder_default)
+
+@app.route("/delete", methods=["GET"])
+@app.route("/delete", methods=["GET"])
+def delete():
+    user_id = USER_ID
+    api_url = f"{API_BASE}/deletefolder"
+
+    path = request.args.get("path", "/")
+    return_to_error = request.referrer or "/"               # back to where user clicked
+    return_to_success = parent_path(path)                   # one level up
+
+    if "view" in request.referrer:
+        return_to_success = f"/folder/view/icon?path={parent_path(path)}"
+    else:
+        return_to_success = f"/folder?path={parent_path(path)}"
+
+    if path == "/":
+        flash("Folder to delete must be specified as path", "error")
+        return redirect(return_to_error)
+
+    payload = {
+        "action": "delete_folder",
+        "path": path,
+        "user_id": user_id
+    }
+
+    try:
+        resp = requests.post(api_url, json=payload)
+        if resp.status_code == 200:
+            flash(f"Folder {path} deleted successfully!", "success")
+            return redirect(return_to_success)  # success = go up
+        else:
+            flash(f"Folder deletion failed: {resp.text}", "error")
+            return redirect(return_to_error)    # failure = go back
+    except Exception as e:
+        flash(f"Exception during folder deletion: {str(e)}", "error")
+        return redirect(return_to_error)
+
 
 
 if __name__ == "__main__":

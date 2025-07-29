@@ -3,15 +3,31 @@
 {% block title %}SparkDrive – Icon View{% endblock %}
 
 {% block content %}
-<h2 class="mb-3 d-flex align-items-center">
-    Folder: <code class="ms-1">{{ path }}</code>
-    <div class="ms-auto d-flex gap-2">
-        <a href="/folder?path={{ path }}" class="btn btn-sm btn-outline-primary">📋 Switch to List View</a>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <h2 class="me-3 mb-0">
+        Folder: <code class="ms-1">{{ path }}</code>
+        <a href="/delete?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
+            class="btn btn-sm btn-outline-danger ms-2"
+            onclick="return confirm('Delete this folder and its contents?')">✖</a>
+    </h2>
+    <div class="d-flex gap-2">
+        <a href="/folder/view/icon?path={{ path }}" class="btn btn-sm btn-outline-primary">🖼️ Switch to Icon View</a>
         <a href="/upload?path={{ path }}" class="btn btn-sm btn-outline-primary">⬆️ Upload File</a>
         <a href="/newfolder?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
             class="btn btn-sm btn-outline-primary">New Folder</a>
     </div>
-</h2>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category }} mb-4" role="alert">
+    {{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
 
 <h4>Folders</h4>
 <div class="row row-cols-2 row-cols-md-4 g-4 mb-5">

@@ -5,35 +5,44 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-3">
     <h2 class="me-3 mb-0">
-        Folder: <code class="ms-1">{{ path }}</code>
-        <a href="/delete?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
+    Folder:
+        <a href="/folder/view/icon?path=/">/</a>
+        {% set ns = namespace(path='') %}
+        {% for segment in path.strip('/').split('/') %}
+        {% set ns.path = ns.path + '/' + segment %}
+        ><a href="/folder/view/icon?path={{ ns.path | urlencode }}">{{segment}}</a>
+        {% endfor %}
+
+        {% if path != '/' %}
+        <a href="/delete?path={{ path }}&return_to={{ request.path }}?path={{ path | urlencode }}"
             class="btn btn-sm btn-outline-danger ms-2"
             onclick="return confirm('Delete this folder and its contents?')">✖</a>
+        {% endif %}
     </h2>
     <div class="d-flex gap-2">
-        <a href="/folder/view/icon?path={{ path }}" class="btn btn-sm btn-outline-primary">🖼️ Switch to Icon View</a>
-        <a href="/upload?path={{ path }}" class="btn btn-sm btn-outline-primary">⬆️ Upload File</a>
-        <a href="/newfolder?path={{ path }}&return_to={{ request.path }}?path={{ path }}"
+        <a href="/folder?path={{ path | urlencode }}" class="btn btn-sm btn-outline-primary">🖼️ Switch to List View</a>
+        <a href="/upload?path={{ path | urlencode }}" class="btn btn-sm btn-outline-primary">⬆️ Upload File</a>
+        <a href="/newfolder?path={{ path | urlencode }}&return_to={{ request.path | urlencode }}?path={{ path | urlencode }}"
             class="btn btn-sm btn-outline-primary">New Folder</a>
     </div>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-{% for category, message in messages %}
-<div class="alert alert-{{ category }} mb-4" role="alert">
-    {{ message }}
-</div>
-{% endfor %}
-{% endif %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mb-4" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
 {% endwith %}
 
 
 <h4>Folders</h4>
 <div class="row row-cols-2 row-cols-md-4 g-4 mb-5">
-    {% for folder in folders %}
+    {% for folder in folders | sort(attribute='name')%}
     <div class="col text-center">
-        <a href="/folder/view/icon?path={{ folder.path }}" class="text-decoration-none text-dark">
+        <a href="/folder/view/icon?path={{ folder.path | urlencode }}" class="text-decoration-none text-dark">
             <img src="/static/icons/folder.png" alt="Folder" width="48" height="48"><br>
             {{ folder.name }}
         </a>
@@ -43,14 +52,15 @@
 
 <h4>Files</h4>
 <div class="row row-cols-2 row-cols-md-4 g-4">
-    {% for file in files %}
+    {% for file in files | sort(attribute='filename') %}
     <div class="col text-center">
         <a href="/download/{{ file.file_id }}" class="text-decoration-none text-dark">
             <img src="/static/icons/file.png" alt="File" width="48" height="48"><br>
             {{ file.filename }}
         </a>
+        <a href="/deletefile?file_id={{ file.file_id }}&return_to=/folder/view/icon?path={{ path | urlencode }}" class="trashcan"
+        onclick="return confirm('Delete this file?')">🗑️</a>
     </div>
     {% endfor %}
 </div>
-<input type="hidden" name="return_to" value="{{ return_to }}">
 {% endblock %}

@@ -67,16 +67,6 @@ def lambda_handler(event, context):
                     "file_id": file_id
                 })
             })
-        elif action == "delete_folder":
-            if not path:
-                return error_response("Missing path")
-            return forward("folder_delete_lambda", {
-                "body": json.dumps({
-                    "user_id": user_id,
-                    "path": path
-                })
-            })
-
             if "error" in share_result.get("body", ""):
                 return share_result
 
@@ -91,6 +81,30 @@ def lambda_handler(event, context):
             print("📦 file_download_lambda response:", result)  # <== Add this!
             return result            
 
+        elif action == "delete_folder":
+            if not path:
+                return error_response("Missing path")
+            return forward("folder_delete_lambda", {
+                "body": json.dumps({
+                    "user_id": user_id,
+                    "path": path
+                })
+            })
+
+        elif action == "delete_file":
+            file_id = body.get("file_id")
+
+            if not file_id:
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "vpc_bridge_lambda: Missing 'file_id' parameter", "lambda": "vpc_bridge_lambda"})
+                }
+            return forward("file_delete_lambda", {
+                "body": json.dumps({
+                    "user_id": user_id,
+                    "file_id": file_id
+                })
+            })
         else:
             return error_response(f"Unknown action: {action}")
 

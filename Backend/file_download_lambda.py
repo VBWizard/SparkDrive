@@ -31,6 +31,16 @@ def lambda_handler(event, context):
         )
         cur = conn.cursor()
         
+        # Clean up old tokens
+        cur.execute("""
+            DELETE FROM file_shares
+            WHERE expires_at IS NOT NULL AND expires_at < NOW()
+            RETURNING file_id
+        """)
+        deleted = cur.rowcount
+        if deleted:
+            print(f"file_download_lambda: Cleaned up {deleted} expired shares")
+
         # Look up token
         cur.execute("""
             SELECT fs.file_id, f.s3_key, fs.expires_at

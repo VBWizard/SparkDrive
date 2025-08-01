@@ -75,7 +75,11 @@ def download(file_id):
     if resp.status_code != 200:
         return f"Error downloading file: {resp.text}", 500
 
+    print(f"resp = {resp}")
+
     outer = resp.json()
+    print(f"outer = {outer}")
+
     url = outer.get("download_url")
     if not url:
         return "Error: No download URL received", 500
@@ -147,12 +151,11 @@ def upload():
     return render_template("upload.html", folder_default=folder_default)
 
 @app.route("/delete", methods=["GET"])
-@app.route("/delete", methods=["GET"])
 def delete():
     user_id = USER_ID
     api_url = f"{API_BASE}/deletefolder"
 
-    path = request.args.get("path", "/")
+    path = request.args.get("path", "{no path}}")
     return_to_error = request.referrer or "/"               # back to where user clicked
     return_to_success = parent_path(path)                   # one level up
 
@@ -161,8 +164,12 @@ def delete():
     else:
         return_to_success = f"/folder?path={parent_path(path)}"
 
-    if path == "/":
+    if path == "{no path}":
         flash("Folder to delete must be specified as path", "error")
+        return redirect(return_to_error)
+
+    if path == "/":
+        flash("The root folder cannot be deleted", "error")
         return redirect(return_to_error)
 
     payload = {
@@ -183,7 +190,32 @@ def delete():
         flash(f"Exception during folder deletion: {str(e)}", "error")
         return redirect(return_to_error)
 
+@app.route("/deletefile", methods=["GET"])
+def delete_file():
+    user_id = USER_ID
+    file_id = request.args.get("file_id")
+    return_to = request.args.get("return_to") or "/"
 
+    if not file_id:
+        flash("Missing file_id.", "error")
+        return redirect(return_to)
+
+    payload = {
+        "action": "delete_file",
+        "file_id": file_id,
+        "user_id": user_id
+    }
+
+    try:
+        resp = requests.post(f"{API_BASE}/file/delete", json=payload)
+        if resp.status_code == 200:
+            flash("File deleted successfully.", "success")
+        else:
+            flash(f"File deletion failed: {resp.text}", "error")
+    except Exception as e:
+        flash(f"Exception during file deletion: {str(e)}", "error")
+
+    return redirect(return_to)
 
 if __name__ == "__main__":
     app.run(debug=True)

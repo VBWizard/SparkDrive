@@ -110,7 +110,7 @@ def lambda_handler(event, context):
                 "file_id": str(row[0]),
                 "filename": row[1],
                 "size_bytes": row[2],
-                "uploaded_at": row[3].isoformat()
+                "uploaded_at": row[3].strftime("%m/%d/%Y %H:%M:%S")
             }
             for row in cur.fetchall()
         ]

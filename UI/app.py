@@ -95,7 +95,7 @@ def newfolder():
     return_to = request.args.get("return_to") or request.form.get("return_to") or "/"
     
     if request.method =="POST":
-        path = f"{folder_default}/{new_folder_name}"
+        path = f"{folder_default if folder_default != '/' else ''}/{new_folder_name}"
         if path == "/":
             flash("Parent folder and New Folder Name are requred", "error")
             return redirect("/newfolder")
@@ -104,6 +104,7 @@ def newfolder():
             "path": path,
             "user_id": user_id
         }
+        print(f"newfolder: payload = {payload}")
         try:
             resp = requests.post(api_url, json=payload)
             if resp.status_code == 200 or resp.status_code == 201:

@@ -34,7 +34,6 @@ folders = [
     "/Test/Bravo",
     "/Images",
     "/Logs",
-    "/Secret"
 ]
 
 for folder in folders:

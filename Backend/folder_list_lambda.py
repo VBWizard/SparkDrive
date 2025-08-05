@@ -91,9 +91,8 @@ def lambda_handler(event, context):
         folders = []
         for r in cur.fetchall():
             child_path = r[0]
-            if child_path.count("/") == depth:
-                name = child_path.rsplit("/", 1)[-1]
-                folders.append({"name": name, "path": child_path})
+            name = child_path.rsplit("/", 1)[-1]
+            folders.append({"name": name, "path": child_path})
 
         folders = get_direct_subfolders(folders, folder_path)
 

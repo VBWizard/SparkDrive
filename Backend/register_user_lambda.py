@@ -1,9 +1,9 @@
 import json
 import os
 import uuid
-import bcrypt
 import psycopg2
-import psycopg2.extras
+from passlib.hash import pbkdf2_sha256
+from passlib import registry
 
 JWT_SECRET = os.environ["JWT_SECRET"]
 DB_CONFIG = {
@@ -14,7 +14,7 @@ DB_CONFIG = {
     'port': 5432,
 }
 
-def handler(event, context):
+def lambda_handler(event, context):
     try:
         body = json.loads(event["body"])
         email = body["email"].strip().lower()
@@ -24,7 +24,7 @@ def handler(event, context):
         if not email or not password:
             return respond(400, "Email and password are required.")
 
-        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        password_hash = pbkdf2_sha256.hash(password)
         user_id = str(uuid.uuid4())
 
         with psycopg2.connect(**DB_CONFIG) as conn:

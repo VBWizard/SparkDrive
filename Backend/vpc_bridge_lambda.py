@@ -1,8 +1,10 @@
 import json
 import boto3
 import os
+import jwt
 
 lambda_client = boto3.client('lambda')
+JWT_SECRET = os.environ["JWT_SECRET"]
 
 # Helper to invoke an internal Lambda
 def invoke_lambda(lambda_name, payload):
@@ -14,37 +16,52 @@ def invoke_lambda(lambda_name, payload):
     body = response['Payload'].read().decode()
     return json.loads(body)
 
+# Verify JWT from Authorization header
+def verify_jwt(headers):
+    auth_header = headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise ValueError("Missing or invalid Authorization header")
+
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidTokenError:
+        raise ValueError("Invalid token")
+
 def lambda_handler(event, context):
     print(f"[DEBUG] vpc_bridge_lambda event: {json.dumps(event)}")
 
     try:
-        # Parse the incoming POST body
+        headers = event.get("headers", {})
         body = json.loads(event.get("body", "{}"))
-
         action = body.get("action")
-        user_id = body.get("user_id")
-        path = body.get("path")
 
         if not action:
+            return error_response("Missing action parameter")
+
+        # Verify JWT and extract user_id
+        try:
+            jwt_payload = verify_jwt(headers)
+        except ValueError as e:
             return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "vpc_bridge_lambda: Missing 'action' parameter", "lambda": "vpc_bridge_lambda"})
+                "statusCode": 401,
+                "body": json.dumps({"error": str(e)})
             }
 
+        user_id = jwt_payload["user_id"]
+        path = body.get("path")
 
-        if not action or not user_id:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Missing action or user_id"})
-            }
-
-        elif action == "list_contents":
+        if action == "list_contents":
             if not path:
                 return error_response("Missing path")
             return forward("folder_list_lambda", {
-                    "user_id": user_id,
-                    "path": path
+                "user_id": user_id,
+                "path": path
             })
+
         elif action == "create_folder":
             if not path:
                 return error_response("Missing path")
@@ -60,7 +77,6 @@ def lambda_handler(event, context):
             if not file_id:
                 return error_response("Missing file_id")
 
-            # Step 1: Call file_share_lambda
             share_result = forward("file_share_lambda", {
                 "body": json.dumps({
                     "user_id": user_id,
@@ -71,15 +87,13 @@ def lambda_handler(event, context):
                 return share_result
 
             token = json.loads(share_result["body"])["token"]
-
-            # Step 2: Call file_download_lambda
             result = forward("file_download_lambda", {
                 "queryStringParameters": {
                     "token": token
                 }
             })
-            print("📦 file_download_lambda response:", result)  # <== Add this!
-            return result            
+            print("📦 file_download_lambda response:", result)
+            return result
 
         elif action == "delete_folder":
             if not path:
@@ -93,18 +107,15 @@ def lambda_handler(event, context):
 
         elif action == "delete_file":
             file_id = body.get("file_id")
-
             if not file_id:
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps({"error": "vpc_bridge_lambda: Missing 'file_id' parameter", "lambda": "vpc_bridge_lambda"})
-                }
+                return error_response("Missing file_id")
             return forward("file_delete_lambda", {
                 "body": json.dumps({
                     "user_id": user_id,
                     "file_id": file_id
                 })
             })
+
         else:
             return error_response(f"Unknown action: {action}")
 
@@ -114,7 +125,6 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "vpc_bridge_lambda: " + str(e)})
         }
 
-# Generic forwarder
 def forward(lambda_name_env_var, payload):
     lambda_name = os.environ.get(lambda_name_env_var)
     if not lambda_name:

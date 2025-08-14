@@ -2,15 +2,37 @@ import json
 import boto3
 import base64
 import os
+import jwt
 
 s3 = boto3.client('s3')
 sns = boto3.client('sns')
 
 BUCKET_NAME = os.environ['S3_BUCKET']
 SNS_TOPIC_ARN = os.environ['SNS_TOPIC_ARN']
+JWT_SECRET = os.environ["JWT_SECRET"]
+
+
+# NOTE: duplicated from vpc_bridge_lambda, will extract into shared layer later
+# Verify JWT from Authorization header
+def verify_jwt(headers):
+    auth_header = next((v for k, v in headers.items() if k.lower() == "authorization"), None)
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise ValueError("Missing or invalid Authorization header")
+
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidTokenError:
+        raise ValueError("Invalid token")
 
 def lambda_handler(event, context):
     try:
+        headers = event.get("headers", {})
+        print(f"[DEBUG] vpc_bridge_lambda event: {json.dumps(event)}")
+
         # Unwrap body if present
         if isinstance(event.get("body"), str):
             try:
@@ -20,11 +42,19 @@ def lambda_handler(event, context):
         else:
             body = event
 
+        try:
+            jwt_payload = verify_jwt(headers)
+        except ValueError as e:
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"error": str(e)})
+            }
+        user_id = jwt_payload["user_id"]
+
         folder = body.get('folder')
         folder = folder if folder == '/' else folder.lstrip('/')
         filename = body.get('filename')
         content_b64 = body.get('content')
-        user_id = body.get("user_id")
         if not all([folder, filename, content_b64, user_id]):
             return {
                 "statusCode": 400,

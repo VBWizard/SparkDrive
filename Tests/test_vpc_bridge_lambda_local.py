@@ -1,11 +1,14 @@
 import pytest
 import jwt
 import json
+import os
 from datetime import datetime, timedelta
-from Backend.vpc_bridge_lambda import lambda_handler
 
 # Setup for testing
 JWT_SECRET = "testsecret"
+os.environ["JWT_SECRET"] = JWT_SECRET
+
+from vpc_bridge_lambda import lambda_handler
 
 def make_token(user_id="00000000-0000-0000-0000-000000000000", exp_hours=12):
     payload = {

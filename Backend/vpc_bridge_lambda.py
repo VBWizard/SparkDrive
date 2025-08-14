@@ -3,11 +3,11 @@ import boto3
 import os
 import jwt
 
-lambda_client = boto3.client('lambda')
 JWT_SECRET = os.environ["JWT_SECRET"]
 
 # Helper to invoke an internal Lambda
 def invoke_lambda(lambda_name, payload):
+    lambda_client = boto3.client('lambda')
     response = lambda_client.invoke(
         FunctionName=lambda_name,
         InvocationType='RequestResponse',
@@ -18,7 +18,7 @@ def invoke_lambda(lambda_name, payload):
 
 # Verify JWT from Authorization header
 def verify_jwt(headers):
-    auth_header = headers.get("Authorization")
+    auth_header = next((v for k, v in headers.items() if k.lower() == "authorization"), None)
     if not auth_header or not auth_header.startswith("Bearer "):
         raise ValueError("Missing or invalid Authorization header")
 
@@ -42,16 +42,20 @@ def lambda_handler(event, context):
         if not action:
             return error_response("Missing action parameter")
 
-        # Verify JWT and extract user_id
-        try:
-            jwt_payload = verify_jwt(headers)
-        except ValueError as e:
-            return {
-                "statusCode": 401,
-                "body": json.dumps({"error": str(e)})
-            }
+        # These actions are called before auth, so don't verify token
+        if action not in ("login_user", "register_user"):
+            # Verify JWT and extract user_id
+            try:
+                jwt_payload = verify_jwt(headers)
+            except ValueError as e:
+                return {
+                    "statusCode": 401,
+                    "body": json.dumps({"error": str(e)})
+                }
+            user_id = jwt_payload["user_id"]
+        else:
+            user_id = None
 
-        user_id = jwt_payload["user_id"]
         path = body.get("path")
 
         if action == "list_contents":
@@ -113,6 +117,32 @@ def lambda_handler(event, context):
                 "body": json.dumps({
                     "user_id": user_id,
                     "file_id": file_id
+                })
+            })
+
+        elif action == "login_user":
+            email = body.get("email")
+            password = body.get("password")
+            if not email or not password:
+                return error_response("Missing email or password")
+            return forward("login_user_lambda", {
+                "body": json.dumps({
+                    "email": email,
+                    "password": password
+                })
+            })
+
+        elif action == "register_user":
+            email = body.get("email")
+            password = body.get("password")
+            display_name = body.get("display_name")
+            if not email or not password or not display_name:
+                return error_response("Missing required registration fields")
+            return forward("register_user_lambda", {
+                "body": json.dumps({
+                    "email": email,
+                    "password": password,
+                    "display_name": display_name
                 })
             })
 

@@ -1,15 +1,18 @@
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import requests
 import json
 import os
 import base64
 from config import SECRET_KEY
-from user_context import USER_ID
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 API_BASE = "https://4gezooenuc.execute-api.us-east-2.amazonaws.com/dev"
+
+def auth_headers():
+    token = session.get("jwt")
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 def parent_path(path):
     if path == "/":
@@ -18,42 +21,38 @@ def parent_path(path):
 
 @app.route("/")
 def home():
-    return folder_view()
+    return redirect(url_for("login"))
 
 @app.route("/folder")
-def folder_view():
-    path = request.args.get("path", "/")
-    user_id = USER_ID
+def folder():
     api_url = f"{API_BASE}/folder/list"
+    path = request.args.get("path", "/")
 
-    payload = {
-        "action": "list_contents",
-        "user_id": user_id,
-        "path": path
-    }
-
-    resp = requests.post(api_url, json=payload)
+    payload = {"action": "list_contents", "path": path}
+    resp = requests.post(api_url, json=payload, headers=auth_headers())
     if resp.status_code == 200:
         data = resp.json()
-        folders = data.get("folders", [])
-        files = data.get("files", [])
-        return render_template("folder_view.html", path=path, folders=folders, files=files)
+        return render_template("folder_view.html", path=path, folders=data.get("folders", []), files=data.get("files", []))
+    elif resp.status_code == 401:
+        flash("Session expired. Please log in again.", "warning")
+        return redirect(url_for("login"))
     else:
-        return f"Error loading folder: {resp.text}", 500
+        return f"Error: {resp.status_code} - {resp.text}"
+
 
 @app.route("/folder/view/icon")
 def folder_view_icon():
     path = request.args.get("path", "/")
-    user_id = USER_ID
     api_url = f"{API_BASE}/folder/list"
 
     payload = {
         "action": "list_contents",
-        "user_id": user_id,
         "path": path
     }
 
-    resp = requests.post(api_url, json=payload)
+    print(f"auth_headers = {auth_headers()}")
+
+    resp = requests.post(api_url, json=payload, headers=auth_headers())
     if resp.status_code != 200:
         return f"Error loading folder: {resp.text}", 500
 
@@ -64,21 +63,16 @@ def folder_view_icon():
 
 @app.route("/download/<file_id>")
 def download(file_id):
-    user_id = USER_ID
     payload = {
         "action": "download_file",
         "file_id": file_id,
-        "user_id": user_id
     }
 
-    resp = requests.post(f"{API_BASE}/file/download", json=payload)
+    resp = requests.post(f"{API_BASE}/file/download", json=payload, headers=auth_headers())
     if resp.status_code != 200:
         return f"Error downloading file: {resp.text}", 500
 
-    print(f"resp = {resp}")
-
     outer = resp.json()
-    print(f"outer = {outer}")
 
     url = outer.get("download_url")
     if not url:
@@ -88,7 +82,6 @@ def download(file_id):
 
 @app.route("/newfolder", methods=["GET","POST"])
 def newfolder():
-    user_id = USER_ID
     api_url = f"{API_BASE}/newfolder"
     folder_default = request.args.get("path", "/")
     new_folder_name = request.form.get("new_folder_name","")
@@ -102,11 +95,9 @@ def newfolder():
         payload = {
             "action": "create_folder",
             "path": path,
-            "user_id": user_id
         }
-        print(f"newfolder: payload = {payload}")
         try:
-            resp = requests.post(api_url, json=payload)
+            resp = requests.post(api_url, json=payload, headers=auth_headers())
             if resp.status_code == 200 or resp.status_code == 201:
                 flash(f"Folder {path} created successfully!", "success")
             else:
@@ -119,7 +110,6 @@ def newfolder():
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    user_id = USER_ID
     api_url = f"{API_BASE}/upload"
     folder_default = request.args.get("path", "/")
 
@@ -137,11 +127,12 @@ def upload():
             "folder": folder.strip(),
             "filename": file.filename,
             "content": encoded_content,
-            "user_id": user_id
         }
 
+        print(f"payload = {payload}")
+
         try:
-            resp = requests.post(api_url, json=payload)
+            resp = requests.post(api_url, json=payload, headers=auth_headers())
             if resp.status_code == 200:
                 flash("File uploaded successfully!", "success")
             else:
@@ -153,7 +144,6 @@ def upload():
 
 @app.route("/delete", methods=["GET"])
 def delete():
-    user_id = USER_ID
     api_url = f"{API_BASE}/deletefolder"
 
     path = request.args.get("path", "{no path}}")
@@ -176,11 +166,10 @@ def delete():
     payload = {
         "action": "delete_folder",
         "path": path,
-        "user_id": user_id
     }
 
     try:
-        resp = requests.post(api_url, json=payload)
+        resp = requests.post(api_url, json=payload, headers=auth_headers())
         if resp.status_code == 200:
             flash(f"Folder {path} deleted successfully!", "success")
             return redirect(return_to_success)  # success = go up
@@ -193,7 +182,6 @@ def delete():
 
 @app.route("/deletefile", methods=["GET"])
 def delete_file():
-    user_id = USER_ID
     file_id = request.args.get("file_id")
     return_to = request.args.get("return_to") or "/"
 
@@ -204,11 +192,10 @@ def delete_file():
     payload = {
         "action": "delete_file",
         "file_id": file_id,
-        "user_id": user_id
     }
 
     try:
-        resp = requests.post(f"{API_BASE}/file/delete", json=payload)
+        resp = requests.post(f"{API_BASE}/file/delete", json=payload, headers=auth_headers())
         if resp.status_code == 200:
             flash("File deleted successfully.", "success")
         else:
@@ -217,6 +204,50 @@ def delete_file():
         flash(f"Exception during file deletion: {str(e)}", "error")
 
     return redirect(return_to)
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+        payload = {"email": email, "password": password, "action": "login_user"}
+        api_url = f"{API_BASE}/login"
+        resp = requests.post(api_url, json=payload)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            session["jwt"] = data["token"]
+            session["display_name"] = data["user"]["display_name"]
+            return redirect(url_for("folder_view_icon"))
+        else:
+            flash("Login failed: Invalid credentials.", "danger")
+    return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+        display_name = request.form["display_name"]
+        payload = {
+            "email": email,
+            "password": password,
+            "display_name": display_name,
+            "action": "register_user",
+        }
+        api_url = f"{API_BASE}/register"
+        resp = requests.post(api_url, json=payload)
+        if resp.status_code == 200:
+            flash("Registration successful. You may now log in.", "success")
+            return redirect(url_for("login"))
+        else:
+            flash("Registration failed: " + resp.text, "danger")
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     app.run(debug=True)

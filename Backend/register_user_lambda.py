@@ -29,11 +29,20 @@ def lambda_handler(event, context):
 
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO users (user_id, email, password_hash, display_name)
-                    VALUES (%s, %s, %s, %s)
-                """, (user_id, email, password_hash, display_name))
-        
+                cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+                if cur.fetchone():
+                    # User already exists so we won't do anything
+                    return respond(400, f"User with the email address {email} already exists.")
+                else:
+                    cur.execute("""
+                        INSERT INTO users (user_id, email, password_hash, display_name)
+                        VALUES (%s, %s, %s, %s)
+                    """, (user_id, email, password_hash, display_name))
+                    cur.execute("""
+                        INSERT INTO folders (user_id, path)
+                        VALUES (%s, %s)
+                    """, (user_id, '/'))
+                    conn.commit()        
         return respond(200, "User registered successfully.")
 
     except psycopg2.errors.UniqueViolation:

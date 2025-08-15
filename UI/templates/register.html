@@ -23,9 +23,65 @@
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
                 <input type="password" class="form-control" id="password" name="password" required>
+
+                <label for="confirm_password" class="form-label mt-2">Confirm Password</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+
+                <div class="mt-1">
+                    <small id="password-match-msg" style="color: red; display: block;"></small>
+                </div>
+
+                <div class="mt-2">
+                    <progress id="password-strength-meter" max="4" value="0" style="width: 100%; height: 8px;"></progress>
+                    <small id="password-strength-msg" style="display: block; margin-top: 4px;"></small>
+                </div>
             </div>
+
             <button type="submit" class="btn btn-primary">Register</button>
             <a href="{{ url_for('login') }}" class="btn btn-link">Back to Login</a>
         </form>
     </div>
+    <script>
+        const password = document.getElementById("password");
+        const confirmPassword = document.getElementById("confirm_password");
+        const strengthMsg = document.getElementById("password-strength-msg");
+        const strengthMeter = document.getElementById("password-strength-meter");
+        const matchMsg = document.getElementById("password-match-msg");
+
+        password.addEventListener("input", updateStrength);
+        confirmPassword.addEventListener("input", checkMatch);
+
+        function updateStrength() {
+            const val = password.value;
+            let score = 0;
+            if (val.length >= 8) score++;
+            if (/[A-Z]/.test(val)) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+
+            strengthMeter.value = score;
+            console.log("Score",score)
+
+            const messages = ["Very Weak", "Weak", "Okay", "Strong", "Very Strong"];
+            strengthMsg.textContent = messages[score] || "Very Weak";
+
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (confirmPassword.value && password.value !== confirmPassword.value) {
+                matchMsg.textContent = "Passwords do not match.";
+            } else {
+                matchMsg.textContent = "";
+            }
+        }
+    const form = document.querySelector("form");
+
+    form.addEventListener("submit", function (e) {
+        if (password.value !== confirmPassword.value) {
+            e.preventDefault();
+            matchMsg.textContent = "Passwords do not match.";
+        }
+    });
+    </script>
 {% endblock %}
